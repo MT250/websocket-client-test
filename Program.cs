@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Threading;
 using Newtonsoft.Json;
 using WebSocketSharp;
 
@@ -8,20 +10,52 @@ namespace ConsoleApp
     {
         const string uri = "ws://localhost";
         const string port = "80";
+
+        static WebSocket webSocket;
+        private static bool isConnectionOpen;
+
+
         static void Main(string[] args)
         {
-            Console.WriteLine(DateTime.Now + "| Client started.");
+            Console.WriteLine(DateTime.Now + " | Client started.");
 
-            //Create instance of Data class
-            Data data = new Data();
-            //Convert instance into JSON string
-            string jsonData = SerializeToJSON(data);
-
-            Console.WriteLine(jsonData);
-
-            ClientWebSocketFunctionality(jsonData);
+            CreateWebSocket();
 
             Console.ReadLine();
+        }
+
+        private static void CreateWebSocket()
+        {
+            if (!isConnectionOpen)
+            {
+                webSocket = new WebSocket(uri + ":" + port + "/Echo");
+                try
+                {
+                    webSocket.ConnectAsync();
+                    isConnectionOpen = true;
+                    webSocket.OnMessage += Websocket_OnMessage;
+
+                    //Thread.Sleep(3000);
+                    CollectDataAndSendToServer();
+
+                    Console.WriteLine(DateTime.Now + " | Press any key to close WebSocket connection.");
+                    while (!Console.KeyAvailable)
+                    { }
+
+                    CloseWebSocket();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(DateTime.Now + " | [ERROR] " + e.Message);
+                }
+            }
+        }
+
+        private static void CloseWebSocket()
+        {
+            webSocket.CloseAsync();
+            isConnectionOpen = false;
+            Console.WriteLine(DateTime.Now + " | Connection closed.");
         }
 
         private static string SerializeToJSON(Data _data)
@@ -31,22 +65,60 @@ namespace ConsoleApp
             return json;
         }
 
-        private static void ClientWebSocketFunctionality(string _json)
+        private static void ClientWebSocketFunctionality(string _json) //TODO: Dead
         {
-            using (WebSocket webSocket = new WebSocket(uri + ":" + port + "/Echo"))
-            {
-                try
+            if (!isConnectionOpen) {
+                using (WebSocket webSocket = new WebSocket(uri + ":" + port + "/Echo"))
                 {
-                    webSocket.Connect();
-                    webSocket.Send(_json);
-                    Console.WriteLine(DateTime.Now + " | Sent data to server.");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(DateTime.Now + " | [ERROR] " + e.Message);
+                    try
+                    {
+                        webSocket.Connect();
+                        isConnectionOpen = true;
+                        webSocket.OnMessage += Websocket_OnMessage;
+
+                        webSocket.Send(_json);
+
+
+                        Console.WriteLine(DateTime.Now + " | Press any key to close connection");
+                        while (!Console.KeyAvailable)
+                        {
+                        }
+
+                        webSocket.Close();
+                        isConnectionOpen = false;
+                        Console.WriteLine(DateTime.Now + " | Connection closed");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(DateTime.Now + " | [ERROR] " + e.Message);
+                    }
                 }
             }
 
+        }
+
+        private static void Websocket_OnMessage(object sender, MessageEventArgs e)
+        {
+            if (e.Data == "GetData") //TODO: Replace string with something else
+            {
+                CollectDataAndSendToServer();
+            }
+            else
+                Console.WriteLine(e.Data);
+        }
+
+        private static void CollectDataAndSendToServer()
+        {
+            //Create instance of Data class
+            Data data = new Data();
+            //Convert instance into JSON string
+            string jsonData = SerializeToJSON(data);
+
+            if (isConnectionOpen)
+            {
+                webSocket.SendAsync(jsonData, null);
+                Console.WriteLine(DateTime.Now + " | Send data to server.");
+            }
         }
 
         class Data
