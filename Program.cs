@@ -65,38 +65,6 @@ namespace ConsoleApp
             return json;
         }
 
-        private static void ClientWebSocketFunctionality(string _json) //TODO: Dead
-        {
-            if (!isConnectionOpen) {
-                using (WebSocket webSocket = new WebSocket(uri + ":" + port + "/Echo"))
-                {
-                    try
-                    {
-                        webSocket.Connect();
-                        isConnectionOpen = true;
-                        webSocket.OnMessage += Websocket_OnMessage;
-
-                        webSocket.Send(_json);
-
-
-                        Console.WriteLine(DateTime.Now + " | Press any key to close connection");
-                        while (!Console.KeyAvailable)
-                        {
-                        }
-
-                        webSocket.Close();
-                        isConnectionOpen = false;
-                        Console.WriteLine(DateTime.Now + " | Connection closed");
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(DateTime.Now + " | [ERROR] " + e.Message);
-                    }
-                }
-            }
-
-        }
-
         private static void Websocket_OnMessage(object sender, MessageEventArgs e)
         {
             if (e.Data == "GetData") //TODO: Replace string with something else
